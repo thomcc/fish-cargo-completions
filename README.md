@@ -7,7 +7,7 @@ I wanted to upstream this but I gather it would suffer the same fate as https://
 This adds completion for stuff like
 - `cargo build --target <tab>` to complete available targets
 - `cargo run --example <example>` or `cargo run --bin <bin>` for the binaries (note that this works in conjunction with a specified `-p`/`--package` or `--manifest-dir` arg, e.g. it will only complete examples for that package)
-- `cargo whatever -p <local package>` to autocomplete to the packages availabel
+- `cargo whatever -p <local package>` to autocomplete to the packages available
 - probably some other stuff, I wrote it a while ago
 
 ## Install with fisher (not tested but should work)
@@ -22,6 +22,6 @@ Again, note that you must install jq in addition.
 
 # License
 
-I think I based `completions/cargo.fish` off of https://github.com/fish-shell/fish-shell/blob/master/share/completions/cargo.fish
+I based `completions/cargo.fish` off of https://github.com/fish-shell/fish-shell/blob/master/share/completions/cargo.fish
 
 Everything else is CC0/public domain, I don't care about the license of the code.
