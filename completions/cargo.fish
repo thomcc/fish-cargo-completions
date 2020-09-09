@@ -1,11 +1,5 @@
 # Tab completion for cargo (https://github.com/rust-lang/cargo).
 complete -e -c cargo
-complete -f -c cargo
-complete -c cargo -s h -l help
-complete -c cargo -s V -l version -d 'Print version info and exit'
-complete -c cargo -l list -d 'List installed commands'
-complete -c cargo -s v -l verbose -d 'Use verbose output'
-complete -c cargo -s q -l quiet -d 'No output printed to stdout'
 
 function __cargo_packages
     set -l manifest_path_arg
@@ -29,12 +23,14 @@ function __cargo_use_subcommand -d "like __fish_use_subcommand, but handles thin
     end
     return 0
 end
-
 # note: we avoid this intentionally for `cargo test`/`cargo bench` when completing past the --
 function __cargo_seen_subcommand_from -d "like __fish_seen_subcommand_from but stops at `--`"
     set -l cmd (commandline -poc)
     set -e cmd[1]
     for i in $cmd
+        if test "$i" = '--'
+            return 1
+        end
         if contains -- $i $argv
             return 0
         end
@@ -91,19 +87,51 @@ function __cargo_find_features
     end
     set -l mani (cargo locate-project $manifest_path_args | jq -r '.root' 2> /dev/null)
     if test "$mani" != ""
-        # older version including value
-        #.packages[] | select(.manifest_path == $mani) | .features
-        # | to_entries | select(.key != "default") | .[] as {$key,$value} | [$key, [$value | join(",")][0]]
-        # | join("\t") | rtrimstr("\t")'
         set -l meta (cargo metadata --no-deps --format-version=1 $manifest_path_args 2>/dev/null)
         set -l query '.packages[] | select(.manifest_path == $mani) | .features | to_entries[] | .key | select(. != "default")'
         cargo metadata --no-deps --format-version=1 $manifest_path_args 2>/dev/null | jq --arg mani "$mani" -r $query
     end
 end
 
+function __cargo_toolchains
+    set -l short
+    set -l long
+    for tc in (rustup toolchain list)
+        set -l toolchain (string replace -r '\s+.*' '' -- $tc)
+        if set -l parts (string match -r '(nightly|beta|stable|\d\.\d{1,2}\.\d)(-(\d{4}-\d{2}-\d{2}))?(-.*)' -- "$toolchain")
+            if test -z "$parts[4]"
+                set -a short "+$parts[2]"
+            else
+                set -a short "+$parts[2]-$parts[4]"
+            end
+        end
+        set -a long "+$toolchain"
+    end
+    for tc in $short $long
+        echo "$tc"
+    end
+end
+
+function __cargo_need_toolchain
+    if test (count (commandline -poc)) -gt 1
+        return 1
+    else
+        return 0
+    end
+end
+
 set __fish_cargo_subcommands (cargo --list | tail -n +2 | string trim | string replace -r '\s+' '\t')
 
+complete -f -c cargo
+complete -c cargo -s h -l help
+complete -c cargo -n '__cargo_use_subcommand' -s V -l version -d 'Print version info and exit'
+complete -c cargo -s v -l verbose -d 'Use verbose output'
+complete -c cargo -s q -l quiet -d 'No output printed to stdout'
+
 complete -c cargo -x -n '__cargo_seen_subcommand_from help' -a '$__fish_cargo_subcommands' -k
+complete -c cargo -n '__cargo_use_subcommand' -l list -d 'List installed commands'
+
+complete -c cargo -r -k -n '__cargo_need_toolchain' -a '(__cargo_toolchains)' -d 'choose toolchain'
 
 complete -c cargo -f -n '__cargo_use_subcommand' -a '$__fish_cargo_subcommands' -k
 complete -c cargo -x -n '__cargo_seen_subcommand_from help' -a '$__fish_cargo_subcommands' -k

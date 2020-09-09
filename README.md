@@ -25,6 +25,8 @@ This adds completion for stuff like:
 
 - Completion for `--manifest-path`s in the current workspace, including when not at workspace root.
 
+- Completion for `+toolchains`s currently installed
+
 - A much more comprehensive set of flags and such than fish's builtin completions, although probably not fully complete because there's no way to do this other than manually going through `cargo help <subcmd>`, which I've done a few times now, for some reason.
 
 - ...
