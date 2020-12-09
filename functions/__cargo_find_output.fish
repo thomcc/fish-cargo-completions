@@ -2,7 +2,7 @@
 # Takes two arguments, target kind and the dir name where
 # it's typically located:
 # - `__cargo_find_output bin bin`
-# - `__cargo_find_output bin example examples`
+# - `__cargo_find_output example examples`
 function __cargo_find_output
     # Look for --manifest-path args: both so that we can pass the right
     # thing to cargo metadata (if we have any idea how to parse it), and
@@ -27,21 +27,21 @@ function __cargo_find_output
             cargo metadata --no-deps --format-version 1 | \
                 jq -r $query --arg pkg "$pkg" --arg kind "$argv[1]"
         end
-    else if test -d "$fallback_search_root"
-        # They didn't pass --no-deps, but `$cwd/examples` or
-        # `$explicit_manifest/examples` (or something) exists.
-        for e in "$fallback_search_root"/*.rs
-            if set -l found (string match -r '/([^/]*?)\\.rs' -- $e)[2]
-                echo $found
+    else
+        if command -sq jq
+            set -l query '.workspace_root as $ws | .packages[] | select(.id | endswith($ws + ")")) | .targets[]
+                | select(.kind[] | contains($kind)) | {name: .name, path: .src_path | sub("^" + $ws + "/"; "")}
+                | .name + "\t in " + .path'
+            cargo metadata --no-deps --format-version 1 $extra_metadata_args | \
+                jq -r $query --arg kind "$argv[1]"
+        else if test -d "$fallback_search_root"
+            # They didn't pass --no-deps, but `$cwd/examples` or
+            # `$explicit_manifest/examples` (or something) exists.
+            for e in "$fallback_search_root"/*.rs
+                if set -l found (string match -r '/([^/]*?)\\.rs' -- $e)[2]
+                    echo $found
+                end
             end
         end
-    else if command -sq jq
-        # This is a bit cludgey, but we really want to avoid running
-        # `cargo metadata` without `--no-deps` -- it can modify
-        # Cargo.lock, run network commands, etc. It's also very slow.
-        set -l query '.workspace_root as $ws | .packages[] | select(.id | endswith($ws + ")")) |
-            .targets[] | select(.kind[] | contains($kind)) | .name'
-        cargo metadata --no-deps --format-version 1 $extra_metadata_args | \
-            jq -r $query --arg pkg "$pkg" --arg kind "$argv[1]"
     end
 end
